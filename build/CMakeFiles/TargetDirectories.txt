@@ -1,0 +1,5 @@
+/Users/abhijeetkumar/Desktop/Node based Image editor/build/CMakeFiles/NodeImageEditor.dir
+/Users/abhijeetkumar/Desktop/Node based Image editor/build/CMakeFiles/edit_cache.dir
+/Users/abhijeetkumar/Desktop/Node based Image editor/build/CMakeFiles/rebuild_cache.dir
+/Users/abhijeetkumar/Desktop/Node based Image editor/build/CMakeFiles/NodeImageEditor_autogen_timestamp_deps.dir
+/Users/abhijeetkumar/Desktop/Node based Image editor/build/CMakeFiles/NodeImageEditor_autogen.dir
