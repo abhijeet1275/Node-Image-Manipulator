@@ -1,6 +1,8 @@
 #include <QApplication>
 #include <QStyleFactory>
 #include "mainwindow.h"
+#include "node.h"
+#include "node_property.h"
 
 int main(int argc, char *argv[])
 {
