@@ -1,6 +1,8 @@
+// canvaswidget.cpp
 #include "canvaswidget.h"
 #include <QPainter>
 #include <QMouseEvent>
+#include <QDebug>
 
 CanvasWidget::CanvasWidget(QWidget *parent)
     : QWidget(parent)
@@ -8,7 +10,6 @@ CanvasWidget::CanvasWidget(QWidget *parent)
     setStyleSheet("background-color: gray;");
     setMouseTracking(true); // Enable mouse tracking for the widget
 }
-
 void CanvasWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -24,32 +25,78 @@ void CanvasWidget::paintEvent(QPaintEvent *event)
         painter.drawLine(0, y, width(), y);
 
     // Draw each node
-    
     for (const Node &node : m_nodes)
     {
-        painter.drawImage(node.getPosition(), node.getImage());
-
+        // First draw the selection highlight if needed
         if (node.isSelected())
         {
             QRect rect(node.getPosition(), node.getImage().size());
             painter.setPen(QPen(Qt::yellow, 3));
             painter.drawRect(rect);
         }
+
+        // Draw the node image
+        painter.drawImage(node.getPosition(), node.getImage());
+
+        // Draw the node name
+        painter.setPen(Qt::white);
+        QFont font = painter.font();
+        font.setBold(true);
+        painter.setFont(font);
+        QRect textRect(node.getPosition().x(),
+                       node.getPosition().y() - 20,
+                       node.getImage().width(),
+                       20);
+        painter.drawText(textRect, Qt::AlignCenter, node.getName());
+
+        // Draw connections (if there are child nodes)
+        if (!node.getChildren().isEmpty())
+        {
+            for (Node *childNode : node.getChildren())
+            {
+                QPoint start = node.getPosition() + QPoint(node.getImage().width() / 2, node.getImage().height() / 2);
+                QPoint end = childNode->getPosition() + QPoint(childNode->getImage().width() / 2, childNode->getImage().height() / 2);
+                painter.setPen(QPen(Qt::black, 2));
+                painter.drawLine(start, end); // Draw line from parent to child
+            }
+        }
     }
 }
+
 void CanvasWidget::mousePressEvent(QMouseEvent *event)
 {
-    // Check if the mouse click is within any of the nodes
+    bool nodeClicked = false;
+
+    // First deselect all nodes
     for (Node &node : m_nodes)
     {
+        node.setSelected(false);
+    }
+
+    // Check if the mouse click is within any of the nodes
+    for (int i = m_nodes.size() - 1; i >= 0; --i) // Check in reverse to handle overlapping nodes
+    {
+        Node &node = m_nodes[i];
         QRect nodeRect(node.getPosition(), node.getImage().size());
         if (nodeRect.contains(event->pos()))
         {
+            // Select this node
+            node.setSelected(true);
+
+            // Set up dragging
             node.setDragging(true);
             m_draggedNode = &node; // Store the node being dragged
+            m_offset = event->pos() - node.getPosition();
+
+            // Emit the signal with the selected node
+            emit nodeSelected(&node);
+
+            nodeClicked = true;
             break;
         }
     }
+
+    update(); // Request a repaint to show selection changes
 }
 
 void CanvasWidget::mouseMoveEvent(QMouseEvent *event)
@@ -64,28 +111,98 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *event)
 
 void CanvasWidget::mouseReleaseEvent(QMouseEvent *event)
 {
+    Q_UNUSED(event);
+
     if (m_draggedNode)
     {
         m_draggedNode->setDragging(false); // Stop dragging
-        m_draggedNode = nullptr;           // Clear the dragged node reference
+        // Note: We don't reset the selected state here
+        m_draggedNode = nullptr; // Clear the dragged node reference
     }
 }
 
-void CanvasWidget::loadImage(const QImage &image)
+void CanvasWidget::loadImage(const QImage &image, const QString &filePath)
 {
     // Position the node in the center of the canvas
     double scale_factor = 0.2;
     int scaledWidth = image.width() * scale_factor;
     int scaledHeight = image.height() * scale_factor;
     QImage scaledImage = image.scaled(scaledWidth, scaledHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    // Create a new node with the scaled image
+
+    // Create a unique name for the node
+    QString nodeName = "Image_" + QString::number(++m_nodeCounter);
 
     // Set the position to a fixed point for simplicity
     QPoint position(50, 50); // Initial position
-    Node newNode(scaledImage, position);
+    Node newNode(scaledImage, position, "Load Image", nodeName);
+
+    // Set additional properties
+    if (newNode.hasProperty("filePath"))
+    {
+        newNode.getProperty("filePath")->setValue(filePath);
+    }
+    if (newNode.hasProperty("originalWidth"))
+    {
+        newNode.getProperty("originalWidth")->setValue(image.width());
+    }
+    if (newNode.hasProperty("originalHeight"))
+    {
+        newNode.getProperty("originalHeight")->setValue(image.height());
+    }
 
     // Add the new node to the list of nodes
     m_nodes.append(newNode);
 
     update(); // Trigger a repaint
+}
+void CanvasWidget::createNode(const QString &nodeType, const QString &nodeName)
+{
+    // Create a placeholder image for the node
+    QImage nodeImage(200, 150, QImage::Format_ARGB32_Premultiplied);
+    nodeImage.fill(Qt::white);
+    QPainter painter(&nodeImage);
+    painter.setPen(Qt::black);
+    painter.setFont(QFont("Arial", 24));
+    painter.drawText(nodeImage.rect(), Qt::AlignCenter, nodeType);
+
+    // Generate a unique name if none provided
+    QString uniqueName = nodeName;
+    if (uniqueName.isEmpty())
+    {
+        uniqueName = nodeType + "_" + QString::number(++m_nodeCounter);
+    }
+
+    // Calculate a position that doesn't overlap with existing nodes
+    QPoint position(50 + m_nodeCounter * 30, 50 + m_nodeCounter * 30);
+
+    // Create the node
+    Node newNode(nodeImage, position, nodeType, uniqueName);
+
+    // Add the node to the list
+    m_nodes.append(newNode);
+
+    update(); // Trigger a repaint
+}
+
+
+
+Node *CanvasWidget::getSelectedNode()
+{
+    for (int i = 0; i < m_nodes.size(); ++i)
+    {
+        if (m_nodes[i].isSelected())
+        {
+            return &m_nodes[i];
+        }
+    }
+    return nullptr;
+}
+QList<Node *> CanvasWidget::getAllNodes()
+{
+    QList<Node *> allNodes;
+    for (Node &node : m_nodes)
+    {
+        allNodes.append(&node);
+    }
+    return allNodes;
 }
