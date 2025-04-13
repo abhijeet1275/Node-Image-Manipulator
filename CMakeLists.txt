@@ -20,6 +20,7 @@ add_executable(NodeImageEditor
     canvaswidget.h
     node.cpp
     node.h
+    node_property.h
 )
 
 # Link the necessary Qt6 libraries
@@ -27,4 +28,3 @@ target_link_libraries(NodeImageEditor PRIVATE Qt6::Widgets Qt6::Core)
 
 # Enable debugging symbols
 set(CMAKE_BUILD_TYPE Debug)
-
