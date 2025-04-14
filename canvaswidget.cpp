@@ -206,3 +206,128 @@ QList<Node *> CanvasWidget::getAllNodes()
     }
     return allNodes;
 }
+
+QImage CanvasWidget::processNodeGraph(Node *outputNode)
+{
+    if (!outputNode)
+        return QImage();
+
+    // Get the child nodes (inputs to the output node)
+    QList<Node *> children = outputNode->getChildren();
+    if (children.isEmpty())
+    {
+        qDebug() << "Output node has no connected inputs";
+        return QImage();
+    }
+
+    // For now, just process the first child - in a complete implementation,
+    // you might handle multiple inputs differently
+    Node *sourceNode = children.first();
+
+    // Start with the base image if it's an image input node
+    if (sourceNode->getType() == "Load Image")
+    {
+        // Get the file path from the node property
+        QString filePath = sourceNode->getProperty("filePath")->getValue().toString();
+        if (filePath.isEmpty())
+        {
+            qDebug() << "File path is empty";
+            return QImage();
+        }
+
+        // Load the original image
+        QImage originalQImage;
+        if (!originalQImage.load(filePath))
+        {
+            qDebug() << "Failed to load image from:" << filePath;
+            return QImage();
+        }
+
+        // Convert to OpenCV format
+        cv::Mat originalCvImage = ImageProcessor::QImageToCvMat(originalQImage);
+        cv::Mat processedCvImage = originalCvImage.clone();
+
+        // Process any effects that are connected to this input node
+        QList<Node *> effectNodes = sourceNode->getChildren();
+
+        // Apply each effect in sequence
+        for (Node *effectNode : effectNodes)
+        {
+            if (effectNode)
+            {
+                processedCvImage = ImageProcessor::processNode(effectNode, processedCvImage);
+            }
+        }
+
+        // Convert back to QImage
+        QImage processedQImage = ImageProcessor::CvMatToQImage(processedCvImage);
+
+        // Update the output node preview if it has a preview property
+        if (outputNode->hasProperty("preview"))
+        {
+            double scale = outputNode->getProperty("previewScale")->getValue().toDouble();
+            QImage scaledPreview = processedQImage.scaled(
+                processedQImage.width() * scale,
+                processedQImage.height() * scale,
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation);
+
+            outputNode->getProperty("preview")->setValue(QVariant::fromValue(scaledPreview));
+        }
+
+        return processedQImage;
+    }
+
+    qDebug() << "Source node is not a Load Image node";
+    return QImage();
+}
+
+void CanvasWidget::saveOutputImage(Node *outputNode, const QString &filePath)
+{
+    if (!outputNode)
+        return;
+
+    QImage processedImage = processNodeGraph(outputNode);
+    if (processedImage.isNull())
+        return;
+
+    // Get output format from node properties
+    QString format = "PNG"; // Default
+    int quality = 90;       // Default
+
+    if (outputNode->hasProperty("outputFormat"))
+    {
+        format = outputNode->getProperty("outputFormat")->getValue().toString();
+    }
+
+    if (outputNode->hasProperty("quality"))
+    {
+        quality = outputNode->getProperty("quality")->getValue().toInt();
+    }
+
+    // Save the image
+    QString actualFilePath = filePath;
+    if (actualFilePath.isEmpty() && outputNode->hasProperty("outputPath"))
+    {
+        actualFilePath = outputNode->getProperty("outputPath")->getValue().toString();
+    }
+
+    if (!actualFilePath.isEmpty())
+    {
+        // Ensure file has correct extension
+        if (!actualFilePath.endsWith("." + format.toLower(), Qt::CaseInsensitive))
+        {
+            actualFilePath += "." + format.toLower();
+        }
+
+        bool saved = processedImage.save(actualFilePath, format.toUtf8().constData(), quality);
+        if (saved)
+        {
+            qDebug() << "Image saved successfully to:" << actualFilePath;
+        }
+        else
+        {
+            qDebug() << "Failed to save image to:" << actualFilePath;
+        }
+    }
+}
