@@ -127,6 +127,24 @@ void Node::initializeDefaultProperties()
         addProperty("originalHeight", 0, NodeProperty::Integer);
         addProperty("children", QStringList{}, NodeProperty::CustomList);
     }
+    else if (m_type == "Output")
+    {
+        // Add output node properties
+        addProperty("outputFormat", "PNG", NodeProperty::Enum);
+        addProperty("quality", 90, NodeProperty::Integer);
+        addProperty("outputPath", "", NodeProperty::String);
+        addProperty("previewScale", 0.5, NodeProperty::Double);
+
+        // Add a property to store the preview image
+        addProperty("preview", QVariant::fromValue(QImage()), NodeProperty::String);
+
+        // Set enum values for output format
+        NodeProperty *formatProp = getProperty("outputFormat");
+        if (formatProp)
+        {
+            formatProp->setEnumValues({"PNG", "JPG", "BMP"});
+        }
+    }
 }
 
 // Define the function to accept a Node* and add it to the children list
