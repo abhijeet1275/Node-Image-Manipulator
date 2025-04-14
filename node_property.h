@@ -40,3 +40,4 @@ private:
 };
 
 #endif // NODE_PROPERTY_H
+//
