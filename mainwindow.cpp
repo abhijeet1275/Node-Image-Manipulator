@@ -165,6 +165,7 @@ MainWindow::MainWindow(QWidget *parent)
     nodeList->addItem("Sharpen");
     nodeList->addItem("Grayscale");
     nodeList->addItem("Brightness");
+    nodeList->addItem("Output");
     nodeList->setMaximumWidth(180);
 
     // When a list item is clicked, we create a node using the appropriate method.
@@ -428,7 +429,68 @@ void MainWindow::setupAdjustmentPanel(Node *node)
         }
         }
     }
+    if (node->getType() == "Output")
+    {
+        // Add a preview image widget
+        QLabel *previewLabel = new QLabel("Preview:");
+        scrollLayout->addWidget(previewLabel);
 
+        QLabel *imagePreview = new QLabel();
+        imagePreview->setMinimumSize(300, 200);
+        imagePreview->setAlignment(Qt::AlignCenter);
+        imagePreview->setStyleSheet("background-color: #333333; border: 1px solid #555555;");
+        scrollLayout->addWidget(imagePreview);
+
+        // Add a refresh preview button
+        QPushButton *refreshButton = new QPushButton("Refresh Preview");
+        scrollLayout->addWidget(refreshButton);
+        connect(refreshButton, &QPushButton::clicked, this, [this, node, imagePreview]()
+                {
+            CanvasWidget *canvas = findChild<CanvasWidget *>();
+            if (!canvas) return;
+            
+            QImage previewImage = canvas->processNodeGraph(node);
+            if (!previewImage.isNull()) {
+                // Scale down for preview if needed
+                QImage scaledImage = previewImage;
+                if (previewImage.width() > imagePreview->width() || 
+                    previewImage.height() > imagePreview->height()) {
+                    scaledImage = previewImage.scaled(
+                        imagePreview->width(), 
+                        imagePreview->height(),
+                        Qt::KeepAspectRatio, 
+                        Qt::SmoothTransformation
+                    );
+                }
+                imagePreview->setPixmap(QPixmap::fromImage(scaledImage));
+            } else {
+                imagePreview->setText("No preview available");
+            } });
+
+        // Add a save button
+        QPushButton *saveButton = new QPushButton("Save Image...");
+        scrollLayout->addWidget(saveButton);
+        connect(saveButton, &QPushButton::clicked, this, [this, node]()
+                {
+            QString format = "PNG";
+            if (node->hasProperty("outputFormat")) {
+                format = node->getProperty("outputFormat")->getValue().toString();
+            }
+            
+            QString fileName = QFileDialog::getSaveFileName(
+                this, 
+                "Save Image",
+                "",
+                format + " Files (*." + format.toLower() + ")"
+            );
+            
+            if (!fileName.isEmpty()) {
+                CanvasWidget *canvas = findChild<CanvasWidget *>();
+                if (canvas) {
+                    canvas->saveOutputImage(node, fileName);
+                }
+            } });
+    }
     scrollLayout->addStretch(); // Make sure content scrolls properly
 }
 
