@@ -8,7 +8,7 @@
 #include <QList>
 #include <QMouseEvent>
 #include "node.h"
-
+#include "image_processor.h"
 class CanvasWidget : public QWidget
 {
     Q_OBJECT
@@ -19,6 +19,8 @@ public:
     const QList<Node> &getNodes() const { return m_nodes; }
     Node *getSelectedNode();
     QList<Node *> getAllNodes();
+    QImage processNodeGraph(Node *outputNode);
+    void saveOutputImage(Node *outputNode, const QString &filePath);
 signals:
     void nodeSelected(Node *node);
     void nodePropertyChanged(Node *node, const QString &propertyName);
