@@ -58,7 +58,7 @@ Make sure you have the following installed:
 
 4. Build the project
    ```bash
-   cmake --build .
+   make
    ```
 
 5. Run the application
