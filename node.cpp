@@ -127,6 +127,12 @@ void Node::initializeDefaultProperties()
         addProperty("originalHeight", 0, NodeProperty::Integer);
         addProperty("children", QStringList{}, NodeProperty::CustomList);
     }
+    else if (m_type == "Color Channel Splitter")
+    {
+        addProperty("channelIndex", 0, NodeProperty::ChannelIndex);
+        addProperty("grayscaleOutput", true, NodeProperty::Boolean);
+        
+    }
     else if (m_type == "Output")
     {
         // Add output node properties
