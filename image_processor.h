@@ -27,6 +27,8 @@ public:
 
     // Process sharpen operation
     static cv::Mat applySharpen(const cv::Mat &inputImage, int amount);
+    // Process color channel splitting operation
+    static cv::Mat applyChannelSplit(const cv::Mat &inputImage, int channelIndex, bool grayscale);
 };
 
 #endif // IMAGE_PROCESSOR_H
