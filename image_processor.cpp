@@ -39,6 +39,13 @@ cv::Mat ImageProcessor::processNode(Node *node, const cv::Mat &inputImage)
         resultImage.convertTo(contrastImage, -1, contrast, 0);
         return contrastImage;
     }
+    // In the processNode function, add this case:
+    else if (nodeType == "Color Channel Splitter")
+    {
+        int channelIndex = node->getProperty("channelIndex")->getValue().toInt();
+        bool grayscale = node->getProperty("grayscaleOutput")->getValue().toBool();
+        return applyChannelSplit(resultImage, channelIndex, grayscale);
+    }
 
     return resultImage;
 }
@@ -175,6 +182,76 @@ QImage ImageProcessor::CvMatToQImage(const cv::Mat &mat)
         QImage image(rgbaMat.data, rgbaMat.cols, rgbaMat.rows, rgbaMat.step, QImage::Format_RGBA8888);
         return image.copy();
     }
+    
 
     return QImage(); // Return empty image if format not supported
+}
+cv::Mat ImageProcessor::applyChannelSplit(const cv::Mat &inputImage, int channelIndex, bool grayscale)
+{
+    // Split the image into its color channels
+    std::vector<cv::Mat> channels;
+    cv::split(inputImage, channels);
+
+    // Convert combobox selection to appropriate channel index
+    // This assumes channelIndex is 0 for Red, 1 for Green, 2 for Blue
+    int cvChannelIndex;
+    if (channelIndex == 0)
+        cvChannelIndex = 2; // Red is at index 2 in BGR
+    else if (channelIndex == 1)
+        cvChannelIndex = 1; // Green is at index 1 in BGR
+    else if (channelIndex == 2)
+        cvChannelIndex = 0; // Blue is at index 0 in BGR
+    else
+        cvChannelIndex = channelIndex; // Fallback
+
+    // Check for valid channel index after conversion
+    if (cvChannelIndex < 0 || cvChannelIndex >= channels.size())
+    {
+        qDebug() << "Invalid channel index";
+        return inputImage; // Return original image if index is invalid
+    }
+
+    // Extract the specified channel
+    cv::Mat outputImage = channels[cvChannelIndex].clone();
+
+    if (grayscale)
+    {
+        // The channel is already single-channel, just return it
+        cv::Mat grayscaleOutput;
+        cv::cvtColor(outputImage, grayscaleOutput, cv::COLOR_GRAY2BGR); // Ensure 3-channel output
+        return grayscaleOutput;
+    }
+    else
+    {
+        // Create a 3-channel image with the selected channel
+        cv::Mat bgrImage;
+
+        // Create zero matrices for the other channels
+        cv::Mat zeroChannel = cv::Mat::zeros(outputImage.size(), outputImage.type());
+
+        // For proper visualization of specific channels, put the channel in its correct position
+        if (channelIndex == 0)
+        { // Red (which is index 2 in BGR)
+            std::vector<cv::Mat> bgrChannels = {zeroChannel, zeroChannel, outputImage};
+            cv::merge(bgrChannels, bgrImage);
+        }
+        else if (channelIndex == 1)
+        { // Green (which is index 1 in BGR)
+            std::vector<cv::Mat> bgrChannels = {zeroChannel, outputImage, zeroChannel};
+            cv::merge(bgrChannels, bgrImage);
+        }
+        else if (channelIndex == 2)
+        { // Blue (which is index 0 in BGR)
+            std::vector<cv::Mat> bgrChannels = {outputImage, zeroChannel, zeroChannel};
+            cv::merge(bgrChannels, bgrImage);
+        }
+        else
+        {
+            // For alpha or other channels, just duplicate across all channels
+            std::vector<cv::Mat> bgrChannels = {outputImage, outputImage, outputImage};
+            cv::merge(bgrChannels, bgrImage);
+        }
+
+        return bgrImage;
+    }
 }
