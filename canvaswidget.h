@@ -9,6 +9,10 @@
 #include <QMouseEvent>
 #include "node.h"
 #include "image_processor.h"
+#include <QStack>
+#include <QDebug>
+#include <QPoint>
+
 class CanvasWidget : public QWidget
 {
     Q_OBJECT
@@ -21,6 +25,13 @@ public:
     QList<Node *> getAllNodes();
     QImage processNodeGraph(Node *outputNode);
     void saveOutputImage(Node *outputNode, const QString &filePath);
+    void clear();
+    void removeNode(Node *childNode);
+    void undo();
+    void redo();
+    void zoomIn();
+    void zoomOut();
+    void resetZoom();
 signals:
     void nodeSelected(Node *node);
     void nodePropertyChanged(Node *node, const QString &propertyName);
@@ -37,6 +48,9 @@ private:
     Node *m_draggedNode = nullptr; // Currently dragged node
     QPoint m_offset;               // Offset for the mouse inside the node
     int m_nodeCounter = 0;         // For generating unique node names
+    QStack<QList<Node>> m_undoStack; // Stack for undo functionality
+    QStack<QList<Node>> m_redoStack; // Stack for redo functionality
+
 };
 
 #endif // CANVASWIDGET_H
