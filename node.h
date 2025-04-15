@@ -58,4 +58,4 @@ private:
     QMap<QString, NodeProperty *> m_properties; // Properties for this node
 };
 
-#endif // NODE_H
+#endif // NODE_H 
