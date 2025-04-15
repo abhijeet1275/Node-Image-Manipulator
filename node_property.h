@@ -16,7 +16,8 @@ public:
         String,
         Boolean,
         Enum,
-        CustomList
+        CustomList,
+        ChannelIndex,
     };
 
     // Constructor
@@ -40,4 +41,3 @@ private:
 };
 
 #endif // NODE_PROPERTY_H
-//
