@@ -331,3 +331,123 @@ void CanvasWidget::saveOutputImage(Node *outputNode, const QString &filePath)
         }
     }
 }
+
+void CanvasWidget::clear()
+{
+    m_nodes.clear();
+    update(); // Trigger a repaint
+}
+
+void CanvasWidget::removeNode(Node *childNode)
+{
+    if (!childNode)
+        return;
+
+    // Remove the node from the list
+    for (int i = 0; i < m_nodes.size(); ++i)
+    {
+        if (&m_nodes[i] == childNode)
+        {
+            m_nodes.removeAt(i);
+            break;
+        }
+    }
+    // Remove the node from its parent's children list
+    for (Node &node : m_nodes)
+    {
+        node.removeChildNode(childNode);
+    }
+    // Clear the dragged node reference if it was the one being dragged
+    if (m_draggedNode == childNode)
+    {
+        m_draggedNode = nullptr;
+    }
+    // Emit a signal to notify that a node was removed
+    emit nodeSelected(nullptr);
+    update(); // Trigger a repaint
+}
+
+void CanvasWidget::undo()
+{
+    // Implement undo functionality here
+    // This could involve maintaining a stack of previous 3 states or actions
+    // and reverting to the last state when undo is called.
+    // For example, you could use a QStack to keep track of the previous states
+    // and pop the last state when undo is called.
+    if(m_nodes.size() > 0)
+    {
+        //paste the last node to the undo stack
+        m_undoStack.push(m_nodes); // Save the current state to the undo stack
+        m_nodes.removeLast(); // Remove the last node as an example
+        update(); // Trigger a repaint
+    }
+    else
+    {
+        qDebug() << "No more actions to undo.";
+    }
+    // You can also emit a signal to notify the UI to update the undo/redo buttons
+
+
+}
+void CanvasWidget::redo()
+{
+    // Implement redo functionality here
+    // This could involve maintaining a stack of undone actions
+    // and reapplying the last undone action when redo is called.
+    // For example, you could use a QStack to keep track of the undone actions
+    // and push the last undone action back to the main stack when redo is called.
+    // For now, just a placeholder
+    //maintain a stack for undo and then redo based on that stack
+    if(m_undoStack.size() > 0)
+    {
+        m_redoStack.push(m_undoStack.pop()); // Move the last state from undo to redo
+        m_nodes = m_redoStack.top(); // Restore the last state
+        update(); // Trigger a repaint
+    }
+    else
+    {
+        qDebug() << "No more actions to redo.";
+    }
+}
+
+void CanvasWidget::zoomIn()
+{
+    // Implement zoom in functionality here
+    // This could involve scaling the canvas or the nodes
+    // For now, just a placeholder
+    qDebug() << "Zooming in...";
+    // Example: scale the canvas
+    // scale(1.2, 1.2);
+    //scale the canvas and all its elements
+    for(Node &node : m_nodes)
+    {
+        node.setPosition(node.getPosition() * 1.2);
+        //edit the image properties of the node
+        // node.getImage().scaled(node.getImage().width() * 1.2, node.getImage().height() * 1.2);
+    }
+}
+void CanvasWidget::zoomOut()
+{
+    // Implement zoom out functionality here
+    // This could involve scaling the canvas or the nodes
+    // For now, just a placeholder
+    qDebug() << "Zooming out...";
+    // Example: scale the canvas
+    for(Node &node : m_nodes)
+    {
+        node.setPosition(node.getPosition() * 0.8);
+        //edit the image properties of the node
+        // node.getImage().scaled(node.getImage().width() * 0.8, node.getImage().height() * 0.8);
+    }
+}
+void CanvasWidget::resetZoom()
+{
+    // Implement reset zoom functionality here
+    // This could involve resetting the scale of the canvas or the nodes
+    // For now, just a placeholder
+    qDebug() << "Resetting zoom...";
+    // Example: reset the scale of the canvas
+    
+
+}
+
