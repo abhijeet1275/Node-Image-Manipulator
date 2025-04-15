@@ -13,70 +13,213 @@
 #include <QListWidget>
 #include <QLabel>
 #include <QFrame>
+#include <QClipboard>
 #include <QMessageBox>
 #include <QComboBox>
+#include <QMimeData>
 #include <QSlider>
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QPainter>
 #include <QtMath>  // for exp(), M_PI
 #include <QDebug>
-
+#include <QApplication>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    //add some styles to the slider and the buttons
+
     setWindowTitle("Node Image Editor");
     resize(1200, 800);
-
-    // === Menu Bar ===
-    QMenuBar *menuBar = new QMenuBar(this);
-    QMenu *fileMenu = new QMenu("File", this);
-    fileMenu->addAction("New");
-    fileMenu->addAction("Open");
-    fileMenu->addAction("Save");
-    fileMenu->addAction("Save As");
-    fileMenu->addSeparator();
-    fileMenu->addAction("Exit");
-    menuBar->addMenu(fileMenu);
-    QMenu *editMenu = new QMenu("Edit", this);
-    editMenu->addAction("Undo");
-    editMenu->addAction("Redo");
-    editMenu->addSeparator();
-    editMenu->addAction("Cut");
-    editMenu->addAction("Copy");
-    editMenu->addAction("Paste");
-    menuBar->addMenu(editMenu);
-    QMenu *viewMenu = new QMenu("View", this);
-    viewMenu->addAction("Zoom In");
-    viewMenu->addAction("Zoom Out");
-    viewMenu->addAction("Reset Zoom");
-    menuBar->addMenu(viewMenu);
-    QMenu *drawChildrenMenu = new QMenu("Draw Children", this);
-    drawChildrenMenu->addAction("Draw Children");
-    menuBar->addMenu(drawChildrenMenu);
-    setMenuBar(menuBar);
 
     // === ToolBar ===
     QToolBar *toolBar = new QToolBar("Main Toolbar", this);
     toolBar->setMovable(false);
     QMenu *fileMenu2 = new QMenu("File", this);
-    fileMenu2->addAction("New");
-    fileMenu2->addAction("Open");
-    fileMenu2->addAction("Save");
-    fileMenu2->addAction("Save As");
+    // fileMenu2->addAction("New");
+    // fileMenu2->addAction("Open");
+    // fileMenu2->addAction("Save");
+    // fileMenu2->addAction("Save As");
+    // fileMenu2->addSeparator();
+    // fileMenu2->addAction("Exit");
+    //add the keyboard shortcuts
+    fileMenu2->addAction("New")->setShortcut(QKeySequence::New);
+    fileMenu2->addAction("Open")->setShortcut(QKeySequence::Open);
+    fileMenu2->addAction("Save")->setShortcut(QKeySequence::Save);
+    fileMenu2->addAction("Save As")->setShortcut(QKeySequence::SaveAs);
     fileMenu2->addSeparator();
-    fileMenu2->addAction("Exit");
+    fileMenu2->addAction("Exit")->setShortcut(QKeySequence::Quit);
+
+    connect(fileMenu2, &QMenu::triggered, this, [this](QAction *action)
+            {
+    if (action->text() == "Exit") {
+        QApplication::quit();
+    } else if (action->text() == "Save") {
+        // Handle save action
+        //just call save the canvas
+        CanvasWidget *canvas = findChild<CanvasWidget *>();
+        if (canvas) {
+            QString fileName = QFileDialog::getSaveFileName(this, "Save Image", "", "Images (*.png *.jpg *.bmp)");
+            if (!fileName.isEmpty()) {
+                canvas->saveOutputImage(canvas->getSelectedNode(), fileName);
+            }
+        }
+    } else if (action->text() == "Open") {
+        // Handle open action
+        QString fileName = QFileDialog::getOpenFileName(this, "Open Image", "", "Images (*.png *.jpg *.bmp)");
+        if (!fileName.isEmpty()) {
+            QImage image;
+            if (image.load(fileName)) {
+                CanvasWidget *canvas = findChild<CanvasWidget *>();
+                if (canvas) {
+                    canvas->loadImage(image, fileName);
+                }
+            } else {
+                QMessageBox::warning(this, "Load Image", "Failed to load the image.");
+            }
+        }
+    } else if (action->text() == "New") {
+        // Handle new action
+        // For now, just clear the canvas
+        CanvasWidget *canvas = findChild<CanvasWidget *>();
+        if (canvas) {
+            canvas->clear();
+        }
+    } else if (action->text() == "Save As") {
+        // Handle save as action
+        QString fileName = QFileDialog::getSaveFileName(this, "Save Image As", "", "Images (*.png *.jpg *.bmp)");
+        if (!fileName.isEmpty()) {
+            CanvasWidget *canvas = findChild<CanvasWidget *>();
+            if (canvas) {
+                canvas->saveOutputImage(canvas->getSelectedNode(), fileName);
+            }
+        }
+
+    }
+            });
+    // Create Edit menu actions
+    //also please add the keyboard shortcuts
+    // Edit menu actions
+    // Undo, Redo, Cut, Copy, Paste
+    // Add keyboard shortcuts
+
     QMenu *editMenu2 = new QMenu("Edit", this);
-    editMenu2->addAction("Undo");
-    editMenu2->addAction("Redo");
-    editMenu2->addSeparator();
-    editMenu2->addAction("Cut");
-    editMenu2->addAction("Copy");
-    editMenu2->addAction("Paste");
+    // editMenu2->addAction("Undo");
+    // editMenu2->addAction("Redo");
+    // editMenu2->addSeparator();
+    // editMenu2->addAction("Delete Node");
+    // editMenu2->addAction("Copy");
+    // editMenu2->addAction("Paste");
+    editMenu2->addAction("Undo")->setShortcut(QKeySequence::Undo);
+    editMenu2->addAction("Redo")->setShortcut(QKeySequence::Redo);
+    editMenu2->addAction("Delete Node")->setShortcut(QKeySequence::Cut);
+    editMenu2->addAction("Copy")->setShortcut(QKeySequence::Copy);
+    editMenu2->addAction("Paste")->setShortcut(QKeySequence::Paste);
+
+    connect(editMenu2, &QMenu::triggered, this, [this](QAction *action)
+            {
+                if(action->text() == "Undo") {
+                    // Handle undo action
+                    //revert the last action performed
+                    //add the undo stack to the canvas
+                    CanvasWidget *canvas = findChild<CanvasWidget *>();
+                    if (canvas) {
+                        canvas->undo();
+                    }
+
+
+                } else if (action->text() == "Redo") {
+                    // Handle redo action
+                    //revert the last action performed
+                    //add the redo stack to the canvas
+                    CanvasWidget *canvas = findChild<CanvasWidget *>();
+                    if (canvas) {
+                        canvas->redo();
+                    }
+
+                } else if (action->text() == "Delete Node") {
+
+                    // Handle cut action
+                    //there we have to do two options first copy then delete that node
+                    // Copy the selected node
+                    //deleting the node does not create its copy
+                    Node *selectedNode = findChild<CanvasWidget *>()->getSelectedNode();
+                    if (selectedNode) {
+                        QClipboard *clipboard = QApplication::clipboard();
+                        QMimeData *mimeData = new QMimeData();
+                        mimeData->setText(selectedNode->getName());
+                        clipboard->setMimeData(mimeData);
+                    }
+                    // Delete the selected node
+                    CanvasWidget *canvas = findChild<CanvasWidget *>();
+                    if (canvas) {
+                        canvas->removeNode(selectedNode);
+                    }
+
+
+                } else if (action->text() == "Copy") {
+                    // Handle copy action
+                    // Copy the selected node to the clipboard
+                    Node *selectedNode = findChild<CanvasWidget *>()->getSelectedNode();
+                    if (selectedNode) {
+                        QClipboard *clipboard = QApplication::clipboard();
+                        QMimeData *mimeData = new QMimeData();
+                        mimeData->setText(selectedNode->getName());
+                        clipboard->setMimeData(mimeData);
+                    }
+
+                } else if (action->text() == "Paste") {
+                    // Handle paste action
+                    // Paste the copied node from the clipboard
+                    QClipboard *clipboard = QApplication::clipboard();
+                    const QMimeData *mimeData = clipboard->mimeData();
+                    //copy the properties of the node from the clipboard with the same properties and type
+                    if (mimeData->hasText()) {
+                        QString nodeName = mimeData->text();
+                        Node *copiedNode = findChild<CanvasWidget *>()->getSelectedNode();
+                        if (copiedNode) {
+                            QString nodeType = copiedNode->getType();
+                            QList<NodeProperty *> properties = copiedNode->getAllProperties();
+                            Node* newNode = new Node(copiedNode->getImage(), copiedNode->getPosition(), nodeType, nodeName);
+                            for (NodeProperty *property : properties) {
+                                newNode->addProperty(property->getName(), property->getValue(), property->getType());
+                            }
+                            // Paste the node to the canvas
+                            CanvasWidget *canvas = findChild<CanvasWidget *>();
+                            if (canvas) {
+                                canvas->createNode(nodeType, nodeName);
+                            }
+                        }
+
+
+                    }
+                    
+                }
+            });
     QMenu *viewMenu2 = new QMenu("View", this);
-    viewMenu2->addAction("Zoom In");
-    viewMenu2->addAction("Zoom Out");
-    viewMenu2->addAction("Reset Zoom");
+    
+    viewMenu2->addAction("Zoom In")->setShortcut(QKeySequence::ZoomIn);
+    viewMenu2->addAction("Zoom Out")->setShortcut(QKeySequence::ZoomOut);
+
+    connect(viewMenu2, &QMenu::triggered, this, [this](QAction *action)
+            {
+                if (action->text() == "Zoom In") {
+                    // Handle zoom in action
+                    //zoom in the canvas
+                    CanvasWidget *canvas = findChild<CanvasWidget *>();
+                    if (canvas) {
+                        canvas->zoomIn();
+                    }
+                } else if (action->text() == "Zoom Out") {
+                    // Handle zoom out action
+                    //zoom out the canvas
+                    CanvasWidget *canvas = findChild<CanvasWidget *>();
+                    if (canvas) {
+                        canvas->zoomOut();
+                    }
+                } 
+            });
+
     QPushButton *btn1 = new QPushButton("Draw Children", this);
     toolBar->addAction(fileMenu2->menuAction());
     toolBar->addAction(editMenu2->menuAction());
@@ -165,7 +308,9 @@ MainWindow::MainWindow(QWidget *parent)
     nodeList->addItem("Sharpen");
     nodeList->addItem("Grayscale");
     nodeList->addItem("Brightness");
+    nodeList->addItem("Color Channel Splitter");
     nodeList->addItem("Output");
+
     nodeList->setMaximumWidth(180);
 
     // When a list item is clicked, we create a node using the appropriate method.
@@ -184,7 +329,26 @@ MainWindow::MainWindow(QWidget *parent)
                     QMessageBox::warning(this, "Load Image", "Failed to load the image.");
                 }
             }
-        } else {
+        }
+        else if(item->text() =="ChannelIndex"){
+            // Create a new node with the selected channel index
+            //drop down 3 options to select the channel index Red, Blue, Green
+
+            QComboBox *comboBox = new QComboBox();
+            comboBox->addItem("Red");
+            comboBox->addItem("Green");
+            comboBox->addItem("Blue");
+            comboBox->setCurrentText("Red");
+            //connect the combo box to the node property
+
+            connect(comboBox, &QComboBox::currentTextChanged, this, [this](const QString &text)
+                    { updateNodeProperty("ChannelIndex", text); });
+            //add the combo box to the node property
+            
+            
+
+        }
+        else {
             // For all other node types, create a new node.
             // For example, when "Blur" is selected, a new Blur node is created.
             canvas->createNode(item->text());
@@ -235,17 +399,37 @@ void MainWindow::handleNodeSelected(Node *node)
         clearAdjustmentPanel();
 }
 
+// In the MainWindow::updateNodeProperty function, when dealing with ChannelIndex:
 void MainWindow::updateNodeProperty(const QString &propertyName, const QVariant &value)
 {
-    if (m_selectedNode && m_selectedNode->hasProperty(propertyName)) {
+    if (m_selectedNode && m_selectedNode->hasProperty(propertyName))
+    {
         NodeProperty *prop = m_selectedNode->getProperty(propertyName);
-        if (prop) {
-            prop->setValue(value);
-            // Optionally, trigger processing based on property changes here.
+        if (prop)
+        {
+            if (prop->getType() == NodeProperty::ChannelIndex)
+            {
+                // Convert text selection to index
+                int index;
+                if (value.toString() == "Red")
+                    index = 0;
+                else if (value.toString() == "Green")
+                    index = 1;
+                else if (value.toString() == "Blue")
+                    index = 2;
+                else
+                    index = 0; // Default to Red
+
+                prop->setValue(index);
+            }
+            else
+            {
+                prop->setValue(value);
+            }
+            // Trigger processing based on property changes
         }
     }
 }
-
 void MainWindow::setupAdjustmentPanel(Node *node)
 {
     if (!node)
@@ -377,6 +561,18 @@ void MainWindow::setupAdjustmentPanel(Node *node)
                 updateNodeProperty(prop->getName(), value); });
             
 
+            break;
+        }
+        case NodeProperty::ChannelIndex:
+        {
+            QComboBox *comboBox = new QComboBox();
+            comboBox->addItem("Red");
+            comboBox->addItem("Green");
+            comboBox->addItem("Blue");
+            comboBox->setCurrentText(prop->getValue().toString());
+            scrollLayout->addWidget(comboBox);
+            connect(comboBox, &QComboBox::currentTextChanged, this, [this, prop](const QString &text)
+                    { updateNodeProperty(prop->getName(), text); });
             break;
         }
         case NodeProperty::Double:
