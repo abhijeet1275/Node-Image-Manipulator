@@ -28,7 +28,6 @@ private:
     void setupAdjustmentPanel(Node *node);
     void clearAdjustmentPanel();
     void updateCombinedGroupProperties(int value);
-
         QWidget *m_adjustmentsPanel = nullptr;
     Node *m_selectedNode = nullptr;
 };
